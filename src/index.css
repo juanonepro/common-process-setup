@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Common design tokens
+   - Roboto for all UI/functional text; Roboto Serif for display & headings.
+   - --radius 0.5rem (8px). 12px for dialogs/sheets. 4px for tiny controls.
+--------------------------------------------------------------------------- */
+@theme {
+  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Roboto Serif", ui-serif, Georgia, serif;
+
+  --radius: 0.5rem;
+
+  --color-background: #ffffff;
+  --color-foreground: #1a1a1a;
+
+  --color-surface: #ffffff;
+  --color-muted: #f4f5f4;
+  --color-muted-foreground: #6b7066;
+  --color-border: #e3e5e0;
+  --color-input: #d7dad3;
+  --color-ring: #2f6f4f;
+
+  /* Common brand — a civic, grounded green */
+  --color-primary: #2f6f4f;
+  --color-primary-foreground: #ffffff;
+  --color-primary-soft: #e9f2ec;
+
+  --color-accent: #f4f5f4;
+  --color-accent-foreground: #1a1a1a;
+
+  --color-secondary: #f4f5f4;
+  --color-secondary-foreground: #1a1a1a;
+
+  /* Readiness / status semantics — always paired with icon + text, never color alone */
+  --color-success: #2f6f4f;
+  --color-success-soft: #e9f2ec;
+  --color-pending: #9a6a1a;
+  --color-pending-soft: #fbf1de;
+  --color-neutral: #6b7066;
+  --color-neutral-soft: #f0f1ef;
+  --color-danger: #b23b3b;
+  --color-danger-soft: #fbecec;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+/* Focus visibility for AA */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease both;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d0d3cd;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
