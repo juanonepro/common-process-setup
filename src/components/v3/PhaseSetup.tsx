@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Pencil, Trash2, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, X } from "lucide-react";
 import { PHASE_TYPE_ICON, type ProcessType } from "./pieces";
 import {
   DONE_LABEL,
@@ -83,8 +83,8 @@ type Tab = "setup" | "people";
  * edits apply as they're made, and Back returns to the process page.
  *
  * An invite-only phase gains a second tab under the hero for the people invited
- * to it, named for the phase (reviewers, voters, participants), plus an invite
- * CTA in the bar so it's reachable from either tab.
+ * to it, named for the phase (reviewers, voters, participants) and badged with
+ * how many are in. Inviting happens inside that tab.
  */
 export function PhaseSetup({
   phase,
@@ -202,12 +202,6 @@ export function PhaseSetup({
           <ArrowLeft aria-hidden />
           Back
         </Button>
-        {inviteOnly && (
-          <Button variant="outline" size="compact" onClick={() => setInviteOpen(true)}>
-            <UserPlus aria-hidden />
-            Invite {people.lower}
-          </Button>
-        )}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
@@ -257,8 +251,19 @@ export function PhaseSetup({
                   )}
                 >
                   {label}
-                  {!!count && (
-                    <span className="ml-1.5 text-[13px] text-[var(--color-primary)]">{count}</span>
+                  {/* How many are invited. Zero is flagged, not greyed out:
+                      an invite-only phase with nobody in it can't run. */}
+                  {count !== null && (
+                    <span
+                      className={cn(
+                        "ml-2 inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none",
+                        count > 0
+                          ? "bg-[var(--color-primary)] text-white"
+                          : "bg-[var(--color-pending-soft)] text-[var(--color-pending)]",
+                      )}
+                    >
+                      {count}
+                    </span>
                   )}
                 </button>
               ))}
