@@ -13,6 +13,7 @@ which are scaffolding, and what isn't real.
 | Concern | File |
 | --- | --- |
 | Stage machine for the whole flow | `src/components/v3/CreateFlowV3.tsx` |
+| Entry screen — **throwaway, see below** | `src/components/v3/EmptyStateV3.tsx` |
 | Intro wizard (5 steps, incl. the branching pathways) | `src/components/v3/WizardV3.tsx` |
 | The "other process" question sequence + phase mapping | `src/components/v3/OtherQuestions.tsx`, `otherFlow.ts` |
 | Fixed phase mappings per process type | `src/components/v3/pieces.ts` |
@@ -72,6 +73,21 @@ These were each decided on purpose and are easy to mistake for arbitrary code.
 - The invitee tab badge shows `0` in a warning tone: an invite-only phase with
   nobody in it can't run.
 
+## The entry point is not part of the design
+
+`EmptyStateV3.tsx` — the empty page with a **New process** button in the middle
+— exists only so the prototype has somewhere to start. It was never a proposal.
+
+In the product, creating one of these starts the way it already does: the
+**Create** button in the top right, then the **decision-making process** option.
+Use that. Everything worth reviewing begins at the next screen, the intro
+wizard.
+
+So: drop the empty state entirely, and hang `WizardV3` off the existing Create
+menu. `CreateFlowV3.tsx` treats `"empty"` as its first stage and returns there
+on exit — both of those go away, and exiting should return wherever your Create
+flow normally returns to.
+
 ## Stubs — don't rebuild these as they are
 
 These open a "not wired up in this prototype" dialog. Wire them to something
@@ -110,8 +126,9 @@ Prototype-only data that should come from the product instead:
 
 Take it in slices rather than all at once:
 
-1. **Wizard** — intro → type → shape/questions → mapping walkthrough → name and
-   access. Self-contained, and it's where the copy matters most.
+1. **Wizard** — entered from your existing Create menu, then intro → type →
+   shape/questions → mapping walkthrough → name and access. Self-contained, and
+   it's where the copy matters most.
 2. **Process page** — the phase rail, the editable page content, the modals.
 3. **Phase setup pages** — one shell, five bodies (form, rubric, proposal form,
    voting, results), plus the invitee tab.
