@@ -100,6 +100,31 @@ a half-guessed shortcut would be worse than the full run. Build it as it is, and
 treat "what a returning admin sees instead" as known, designed later — don't
 invent a skip link or a condition for it in this pass.
 
+## The process page is the live process page, in edit mode
+
+`ProcessPage.tsx` is not a new screen. It's the **existing process page overview
+layout** with editing turned on — the prototype only approximates it, because it
+was built from a screenshot. Your current overview page is the source of truth
+for the layout: same banner, same left rail, same content column, same grid,
+spacing and type. Take it from the real page, not from mine.
+
+The reason this matters: **publishing flips the same page into the
+participant-facing, read-only view, and nothing should move.** Same containers,
+same positions, same rhythm before and after. What changes is the editing
+affordances, not the layout:
+
+- inline editable fields become plain text — so the editable versions have to
+  occupy the same box as the text they'll turn into, not a taller input
+- the rail's per-phase "Set it up" buttons and the "Edit process" action drop
+  away; the phases themselves stay exactly where they are
+- Exit / Add admin / Preview / Publish give way to the live page's own chrome
+- "Add a section" and the hover remove controls disappear once there's nothing
+  to add
+
+Treat any reflow between draft and published as a bug. If an edit control can't
+sit in the same footprint as its read-only counterpart, reserve the space rather
+than letting the page jump.
+
 ## Stubs — don't rebuild these as they are
 
 These open a "not wired up in this prototype" dialog. Wire them to something
@@ -141,6 +166,8 @@ Take it in slices rather than all at once:
 1. **Wizard** — entered from your existing Create menu, then intro → type →
    shape/questions → mapping walkthrough → name and access. Self-contained, and
    it's where the copy matters most.
-2. **Process page** — the phase rail, the editable page content, the modals.
+2. **Process page** — start from your live overview layout and add the edit
+   mode on top of it, rather than building the draft page and retrofitting the
+   published one.
 3. **Phase setup pages** — one shell, five bodies (form, rubric, proposal form,
    voting, results), plus the invitee tab.
