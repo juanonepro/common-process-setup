@@ -88,6 +88,18 @@ menu. `CreateFlowV3.tsx` treats `"empty"` as its first stage and returns there
 on exit — both of those go away, and exiting should return wherever your Create
 flow normally returns to.
 
+## The wizard is a first-run experience
+
+The intro wizard — the mapping walkthrough especially — is teaching material.
+It's aimed at someone setting up their first process and learning what Common
+does with one. Someone on their fifth shouldn't have to sit through the
+explanation again.
+
+**For now, keep showing it to everyone.** There's no repeat-user design yet, and
+a half-guessed shortcut would be worse than the full run. Build it as it is, and
+treat "what a returning admin sees instead" as known, designed later — don't
+invent a skip link or a condition for it in this pass.
+
 ## Stubs — don't rebuild these as they are
 
 These open a "not wired up in this prototype" dialog. Wire them to something
