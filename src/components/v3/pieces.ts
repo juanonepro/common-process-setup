@@ -83,7 +83,7 @@ export const TYPE_META: Record<ProcessType, TypeMeta> = {
   other: {
     label: "Other process type",
     labelLower: "custom",
-    desc: "Describe it and we'll map it onto Common",
+    desc: "Answer a few questions and we'll map it onto Common",
     icon: "Shapes",
     wired: true,
   },
@@ -350,6 +350,83 @@ export function piecesFor(type: ProcessType | null, shape: ShapeKey | null): Pie
   return PIECE_SETS[`${type}:${shape}`] ?? [];
 }
 
+// ---------------------------------------------------------------------------
+// Grantmaking — who actually makes the call.
+//
+// A panel scoring against a rubric is the common case but not the only one:
+// plenty of funds hand the decision to the applicants themselves, or use a
+// panel to shortlist and then vote. That changes the phases, so it's a
+// question rather than an assumption.
+// ---------------------------------------------------------------------------
+
+export type GrantDecision = "rubric" | "applicants" | "hybrid";
+
+export const GRANT_DECISION_QUESTION: {
+  heading: string;
+  options: { key: GrantDecision; label: string; desc: string }[];
+} = {
+  heading: "Who decides what gets funded?",
+  options: [
+    {
+      key: "rubric",
+      label: "Reviewers score against a rubric",
+      desc: "A panel assesses each application and makes the call",
+    },
+    {
+      key: "applicants",
+      label: "The applicants vote",
+      desc: "Everyone who applied helps decide where the money goes",
+    },
+    {
+      key: "hybrid",
+      label: "Reviewers shortlist, then a vote decides",
+      desc: "A panel narrows the field, then it goes to a vote",
+    },
+  ],
+};
+
+const GRANT_VOTE_PIECE: Piece = {
+  name: "Put it to a vote",
+  phaseType: "Voting",
+  description: "The people invited to vote decide where the money goes.",
+  capabilities: [
+    "Choose how people vote",
+    "Combine ways of voting",
+    "Decide who can vote",
+    "Keep votes anonymous",
+  ],
+};
+
+/**
+ * Reshape a grantmaking set around who decides. Only the *last* review changes:
+ * in a letter-of-intent process the earlier review picks who advances, which
+ * happens either way.
+ */
+export function applyGrantDecision(pieces: Piece[], decision: GrantDecision | null): Piece[] {
+  if (!decision || decision === "rubric" || pieces.length === 0) return pieces;
+
+  const lastReview = pieces.map((p) => p.phaseType).lastIndexOf("Review");
+  if (lastReview < 0) return pieces;
+
+  if (decision === "applicants") {
+    // No deciding panel at all — the applicants vote instead.
+    return pieces.map((p, i) => (i === lastReview ? GRANT_VOTE_PIECE : p));
+  }
+
+  // Hybrid — the panel narrows the field, then the vote settles it.
+  const narrowed: Piece = {
+    ...pieces[lastReview],
+    name: "Narrow the field",
+    description: "Reviewers score what came in and pick the finalists.",
+  };
+  return [
+    ...pieces.slice(0, lastReview),
+    narrowed,
+    GRANT_VOTE_PIECE,
+    ...pieces.slice(lastReview + 1),
+  ];
+}
+
 /** The subject of the "Here's how ___ could run on Common" headline. */
 export function processSubject(name: string, type: ProcessType | null): string {
   const trimmed = name.trim();
@@ -364,151 +441,4 @@ export function dashboardTitle(name: string, type: ProcessType | null): string {
   if (trimmed) return trimmed;
   const meta = type ? TYPE_META[type] : null;
   return meta ? `Untitled ${meta.labelLower} process` : "Untitled process";
-}
-
-// ---------------------------------------------------------------------------
-// "Other" pathway — a prototype fit assessment of a free-text description.
-//
-// There's no real NLP here: it keyword-matches the description against what
-// Common actually does (collect → review → decide) to land on one of three
-// verdicts, and sketches an adaptive phase mapping when it can.
-// ---------------------------------------------------------------------------
-
-export type Fit = "good" | "stretch" | "no";
-
-export interface Assessment {
-  fit: Fit;
-  headline: string;
-  body: string;
-  /** For a stretch: what isn't supported yet. */
-  roadmapNote?: string;
-  /** The suggested mapping — empty when it isn't a fit. */
-  pieces: Piece[];
-}
-
-// Signals that a description is a participatory decision process (Common's home turf).
-const GOOD_SIGNALS = [
-  "submit", "propose", "proposal", "apply", "application", "applicant", "review",
-  "reviewer", "vote", "voting", "ballot", "fund", "grant", "budget", "idea",
-  "select", "committee", "panel", "judge", "decide", "decision", "award",
-  "nominat", "elect", "participant", "community", "member", "score", "rubric",
-  "shortlist", "pitch", "entry", "entries", "contest", "competition", "residents",
-];
-
-// Signals of something Common can't do natively yet (still mappable as a stretch).
-const STRETCH_SIGNALS: { keys: string[]; label: string }[] = [
-  { keys: ["ranked choice", "ranked-choice", "instant runoff", "rank them", "ranking"], label: "Ranked-choice voting" },
-  { keys: ["quadratic"], label: "Quadratic voting" },
-  { keys: ["debate", "deliberat", "consensus", "town hall discussion"], label: "Live deliberation" },
-  { keys: ["auction", "bidding", "bid on"], label: "Auctions and bidding" },
-  { keys: ["tournament", "bracket", "head-to-head"], label: "Head-to-head brackets" },
-  { keys: ["petition", "signature"], label: "Petitions and signatures" },
-  { keys: ["real-time", "real time", "live vote", "continuous"], label: "Real-time participation" },
-  { keys: ["negotiat"], label: "Multi-party negotiation" },
-];
-
-// Signals it's a different kind of product entirely.
-const NO_SIGNALS = [
-  "sell", "ecommerce", "e-commerce", "online store", "storefront", "inventory",
-  "crm", "invoice", "payroll", "booking", "reservation", "appointment",
-  "scheduling", "dating", "newsletter", "blog", "wiki", "helpdesk",
-  "support ticket", "sprint", "kanban", "backlog", "checkout", "shopping cart",
-  "lead generation", "recipe", "playlist",
-];
-
-function base(): Piece[] {
-  return [
-    {
-      name: "Collect submissions",
-      phaseType: "Submissions",
-      description: "Gather what people put forward.",
-      capabilities: ["Set your own questions", "Open to all or invite-only", "Add a deadline"],
-    },
-    {
-      name: "Review submissions",
-      phaseType: "Review",
-      capabilities: [
-        "Build a scoring rubric",
-        "Add questions for reviewers",
-        "Invite reviewers",
-        "Choose what advances",
-      ],
-    },
-  ];
-}
-
-/** Sketch an adaptive mapping — inserting Develop / Voting when the words fit. */
-function mapPieces(desc: string): Piece[] {
-  const d = desc.toLowerCase();
-  const pieces = base();
-  if (/develop|refine|shortlist|iterat|workshop|prototype/.test(d)) {
-    pieces.push({
-      name: "Develop what advances",
-      phaseType: "Develop",
-      description: "The strongest entries are worked up further.",
-      capabilities: ["Choose who develops them", "Set what's required", "Add cost or budget details"],
-    });
-  }
-  if (/vote|ballot|budget|fund|allocat|spend|elect|choose|winner|prize/.test(d)) {
-    pieces.push({
-      name: "Put it to a decision",
-      phaseType: "Voting",
-      description: "People decide together.",
-      capabilities: ["Choose how people vote", "Set the limits", "Decide who can vote"],
-    });
-  }
-  pieces.push({
-    name: "Share results",
-    phaseType: "Results",
-    capabilities: ["Publish the outcome", "Notify participants", "Share a summary page"],
-  });
-  return pieces;
-}
-
-export function assessProcess(description: string): Assessment {
-  const d = description.toLowerCase();
-  const has = (arr: string[]) => arr.some((k) => d.includes(k));
-
-  const goodSignal = has(GOOD_SIGNALS);
-  const noSignal = has(NO_SIGNALS);
-  const stretchHit = STRETCH_SIGNALS.find((s) => has(s.keys));
-
-  // Clearly a different product, and none of the decision-process cues.
-  if (noSignal && !goodSignal && !stretchHit) {
-    return {
-      fit: "no",
-      headline: "This doesn't look like a fit for Common",
-      body: "Common runs participatory decision processes — people submit something, a review happens, and a group decides together. What you described looks like a different kind of tool.",
-      pieces: [],
-    };
-  }
-
-  // Mappable, but leans on something Common doesn't do natively yet.
-  if (stretchHit) {
-    return {
-      fit: "stretch",
-      headline: "A bit of a stretch — but you can run it",
-      body: "Common can handle most of what you described. Here's a way to set it up with today's features — you can adjust anything after.",
-      roadmapNote: `${stretchHit.label} isn't in Common yet — it's on our roadmap. For now the mapping below approximates it.`,
-      pieces: mapPieces(d),
-    };
-  }
-
-  // Reads like a decision process → good fit.
-  if (goodSignal) {
-    return {
-      fit: "good",
-      headline: "This maps neatly onto Common",
-      body: "What you described lines up with how Common works. Here's how it could run — adjust anything after.",
-      pieces: mapPieces(d),
-    };
-  }
-
-  // Ambiguous — no strong signals. Offer a starting point, framed as adjustable.
-  return {
-    fit: "stretch",
-    headline: "Here's a starting point",
-    body: "We couldn't tell exactly how your process works, so this is a general way to run it on Common. Treat it as a sketch and adjust each piece.",
-    pieces: mapPieces(d),
-  };
 }

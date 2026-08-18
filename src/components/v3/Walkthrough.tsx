@@ -21,6 +21,7 @@ export function Walkthrough({
   openIndex,
   settling,
   hideAdvance,
+  banner,
   onOpen,
   onAdvance,
   onConfigure,
@@ -35,6 +36,8 @@ export function Walkthrough({
   settling: boolean;
   /** Hide the inline advance/configure buttons (a parent footer drives them). */
   hideAdvance?: boolean;
+  /** Optional note between the title and the pieces. */
+  banner?: React.ReactNode;
   onOpen: (i: number) => void;
   onAdvance: () => void;
   onConfigure: () => void;
@@ -54,6 +57,8 @@ export function Walkthrough({
           ? "Setting up your workspace…"
           : "What each piece does and what you can set up — tap any to expand."}
       </p>
+
+      {banner && <div className="mt-6">{banner}</div>}
 
       <div className="mt-8 space-y-3">
         {pieces.slice(0, revealed).map((piece, i) => {

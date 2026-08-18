@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from "react";
-import { CopyPlus, GripVertical, History, Lock, Plus, Trash2, X } from "lucide-react";
+import { CopyPlus, GripVertical, History, Lock, Plus, Trash2, Upload, X } from "lucide-react";
 import {
   ANSWER_FORMATS,
   NAME_LIMIT,
@@ -175,20 +175,22 @@ interface BuilderAction {
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
-  /** Exactly one action leads; the rest are outlined alternatives. */
-  primary?: boolean;
+  /** primary + secondary sit side by side; tertiary is a quiet line beneath. */
+  tier: "primary" | "secondary" | "tertiary";
 }
 
-/** Empty-state card. The ways in are ordered with the leading one first. */
+/** Empty-state card: the two real ways to start, then the quieter shortcut. */
 function EmptyBuilder({ text, actions }: { text: string; actions: BuilderAction[] }) {
+  const buttons = actions.filter((a) => a.tier !== "tertiary");
+  const quiet = actions.filter((a) => a.tier === "tertiary");
   return (
     <div className="rounded-[var(--radius)] border border-dashed border-[var(--color-input)] px-6 py-10 text-center">
       <p className="text-[14px] text-[var(--color-muted-foreground)]">{text}</p>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        {actions.map((a) => (
+        {buttons.map((a) => (
           <Button
             key={a.key}
-            variant={a.primary ? "default" : "outline"}
+            variant={a.tier === "primary" ? "default" : "secondary"}
             size="compact"
             onClick={a.onClick}
           >
@@ -197,6 +199,20 @@ function EmptyBuilder({ text, actions }: { text: string; actions: BuilderAction[
           </Button>
         ))}
       </div>
+      {quiet.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-4">
+          {quiet.map((a) => (
+            <button
+              key={a.key}
+              onClick={a.onClick}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)] hover:underline"
+            >
+              {a.icon}
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -416,6 +432,7 @@ export function FormBuilder({
   emptyText = "No questions yet.",
   copy,
   sets,
+  onUpload,
   previous,
   previousLeads,
 }: {
@@ -427,6 +444,8 @@ export function FormBuilder({
   copy: FieldCopy;
   /** Question sets from earlier processes, when this phase has any. */
   sets?: SavedSet<FormField>[];
+  /** Bring questions in from a file, where that's offered. */
+  onUpload?: () => void;
   /** The form people already filled in earlier in this process, to build on. */
   previous?: { name: string; fields: FormField[] };
   /** True when building on that form is the expected route, not starting over. */
@@ -472,7 +491,7 @@ export function FormBuilder({
                 pinned: true,
               })),
             ),
-          primary: previousLeads,
+          tier: previousLeads ? "primary" : "secondary",
         }
       : null;
     const fresh: BuilderAction = {
@@ -480,20 +499,30 @@ export function FormBuilder({
       label: carryOver ? "New form" : addLabel,
       icon: <Plus aria-hidden />,
       onClick: add,
-      primary: !carryOver || !previousLeads,
+      tier: !carryOver || !previousLeads ? "primary" : "secondary",
     };
+    const upload: BuilderAction | null = onUpload
+      ? {
+          key: "upload",
+          label: "Upload questions",
+          icon: <Upload aria-hidden />,
+          onClick: onUpload,
+          tier: "secondary",
+        }
+      : null;
     const reuse: BuilderAction | null = sets
       ? {
           key: "sets",
-          label: "Use ones from another process",
-          icon: <History aria-hidden />,
+          label: "Questions from a previous process",
+          icon: <History className="size-3.5" aria-hidden />,
           onClick: () => setPicking(true),
+          tier: "tertiary",
         }
       : null;
 
     const actions = (carryOver && previousLeads
-      ? [carryOver, fresh, reuse]
-      : [fresh, carryOver, reuse]
+      ? [carryOver, fresh, upload, reuse]
+      : [fresh, carryOver, upload, reuse]
     ).filter(Boolean) as BuilderAction[];
 
     return (
@@ -618,15 +647,16 @@ export function RubricBuilder({
               label: "Add a criterion",
               icon: <Plus aria-hidden />,
               onClick: add,
-              primary: true,
+              tier: "primary" as const,
             },
             ...(sets
               ? [
                   {
                     key: "sets",
-                    label: "Use one from another process",
-                    icon: <History aria-hidden />,
+                    label: "Rubric from a previous process",
+                    icon: <History className="size-3.5" aria-hidden />,
                     onClick: () => setPicking(true),
+                    tier: "tertiary" as const,
                   },
                 ]
               : []),

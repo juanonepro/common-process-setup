@@ -119,6 +119,7 @@ export function PhaseSetup({
   const [tab, setTab] = useState<Tab>("setup");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   // Dropping out of invite-only takes its tab with it.
   const activeTab: Tab = inviteOnly ? tab : "setup";
@@ -310,6 +311,7 @@ export function PhaseSetup({
                       }
                       copy={FIELD_COPY[kind]!}
                       sets={kind === "form" ? FORM_SETS : undefined}
+                      onUpload={kind === "form" ? () => setUploadOpen(true) : undefined}
                       previous={kind === "requirements" ? previousForm : undefined}
                       /* A PB process develops a rough idea into something new,
                          so a fresh form leads. Everywhere else the proposal
@@ -380,6 +382,32 @@ export function PhaseSetup({
           onInvite={invite}
           onClose={() => setInviteOpen(false)}
         />
+      )}
+
+      {uploadOpen && (
+        <Dialog open onClose={() => setUploadOpen(false)} className="max-w-md">
+          <div className="p-6">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="font-serif text-[20px] font-semibold leading-tight">
+                Upload questions
+              </h2>
+              <button
+                onClick={() => setUploadOpen(false)}
+                aria-label="Close"
+                className="grid size-8 shrink-0 place-items-center rounded-[var(--radius-sm)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
+            <p className="mt-3 text-[15px] leading-relaxed text-[var(--color-muted-foreground)]">
+              This would bring in a list of questions from a document or spreadsheet — one
+              question per row, with its answer type. It isn't wired up in this prototype.
+            </p>
+            <div className="mt-5 flex justify-end">
+              <Button onClick={() => setUploadOpen(false)}>Got it</Button>
+            </div>
+          </div>
+        </Dialog>
       )}
 
       {confirmDelete && (

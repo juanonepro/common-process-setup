@@ -1,30 +1,33 @@
 import { useState } from "react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Waypoints, X } from "lucide-react";
 import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CheckCircle2,
-  CircleSlash,
-  Map,
-  Sparkles,
-  Waypoints,
-  X,
-} from "lucide-react";
-import {
+  GRANT_DECISION_QUESTION,
   SHAPE_QUESTION,
   TYPE_META,
-  assessProcess,
+  applyGrantDecision,
   piecesFor,
-  type Assessment,
+  type GrantDecision,
   type Piece,
   type ProcessType,
   type ShapeKey,
 } from "./pieces";
+import {
+  EMPTY_OTHER,
+  composeOtherPieces,
+  describeOther,
+  type OtherAnswers,
+} from "./otherFlow";
+import {
+  OtherStepView,
+  otherCanContinue,
+  otherStepList,
+  type OtherStep,
+} from "./OtherQuestions";
+import { ChoiceCard, StepHeading } from "./WizardBits";
 import { Walkthrough } from "./Walkthrough";
 import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +59,11 @@ export function WizardV3({
   const [step, setStep] = useState(1);
   const [type, setType] = useState<ProcessType | null>(null);
   const [shape, setShape] = useState<ShapeKey | null>(null);
-  const [description, setDescription] = useState("");
+  // Grantmaking asks who decides; "other" asks its own four questions. Both
+  // live inside step 3 as a little sequence of their own.
+  const [grantDecision, setGrantDecision] = useState<GrantDecision | null>(null);
+  const [other, setOther] = useState<OtherAnswers>(EMPTY_OTHER);
+  const [subIndex, setSubIndex] = useState(0);
   const [name, setName] = useState("");
   const [audience, setAudience] = useState<"anyone" | "invite">("anyone");
   const [submissionsPrivate, setSubmissionsPrivate] = useState(false);
@@ -64,16 +71,35 @@ export function WizardV3({
   const [openIndex, setOpenIndex] = useState(0);
 
   const shapeQ = type ? SHAPE_QUESTION[type] : undefined;
-  // For "other" we assess the free-text description; otherwise the shape picks the set.
-  const assessment = type === "other" ? assessProcess(description) : null;
-  const pieces = type === "other" ? (assessment?.pieces ?? []) : piecesFor(type, shape);
+  const isOther = type === "other";
+  // "Other" composes its phases from the four answers; a grant set is reshaped
+  // by who decides; everything else comes straight from the shape.
+  const pieces = isOther
+    ? composeOtherPieces(other)
+    : type === "grant"
+      ? applyGrantDecision(piecesFor(type, shape), grantDecision)
+      : piecesFor(type, shape);
 
-  const noFit = type === "other" && assessment?.fit === "no";
+  // Step 3's screens, in order, for whichever pathway is running.
+  const subSteps: string[] = isOther
+    ? otherStepList(other)
+    : type === "grant"
+      ? ["shape", "grantDecision"]
+      : ["shape"];
+  const subStep = subSteps[Math.min(subIndex, subSteps.length - 1)];
 
   const pickType = (t: ProcessType) => {
     setType(t);
     setShape(t === "other" ? "custom" : null);
-    setDescription("");
+    setGrantDecision(null);
+    setOther(EMPTY_OTHER);
+    setSubIndex(0);
+  };
+
+  const patchOther = (patch: Partial<OtherAnswers>) => {
+    setOther((o) => ({ ...o, ...patch }));
+    // An always-open process is for a named group, so start it invite-only.
+    if (patch.cadence === "ongoing") setAudience("invite");
   };
 
   const advance = () => {
@@ -82,29 +108,48 @@ export function WizardV3({
       if (type && shape) onDone({ type, shape, name, audience, submissionsPrivate, pieces });
       return;
     }
+    // Step 3 can be a sequence of its own — work through it first.
+    if (step === 3 && subIndex < subSteps.length - 1) {
+      setSubIndex(subIndex + 1);
+      return;
+    }
     // Entering the walkthrough — open the first piece.
     if (step === 3) setOpenIndex(0);
     setStep(step + 1);
   };
-  const back = () => setStep((s) => Math.max(1, s - 1));
+
+  const back = () => {
+    if (step === 3 && subIndex > 0) {
+      setSubIndex(subIndex - 1);
+      return;
+    }
+    // Coming back into step 3 lands on its last screen.
+    if (step === 4) setSubIndex(subSteps.length - 1);
+    setStep((s) => Math.max(1, s - 1));
+  };
 
   const canContinue =
     step === 2
       ? !!type
       : step === 3
-        ? type === "other"
-          ? description.trim().length > 0
-          : !!shape
-        : step === 4
-          ? !noFit
-          : true;
+        ? isOther
+          ? otherCanContinue(subStep as OtherStep, other)
+          : subStep === "grantDecision"
+            ? !!grantDecision
+            : !!shape
+        : true;
 
   const footerLabel = (() => {
     if (step === 1) return "Get started";
-    if (step === 2 || step === 3) return "Continue";
-    if (step === 4) return noFit ? "Not a fit" : "Continue";
+    if (step === 2 || step === 3 || step === 4) return "Continue";
     return "Set up my process";
   })();
+
+  // Progress runs smoothly through the "other" sub-steps instead of sticking.
+  const progress =
+    step === 3
+      ? ((2 + (subIndex + 1) / subSteps.length) / TOTAL) * 100
+      : (step / TOTAL) * 100;
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-muted)]">
@@ -124,26 +169,23 @@ export function WizardV3({
         {step === 4 ? (
           <Step4
             type={type}
-            assessment={assessment}
+            recap={isOther ? describeOther(other) : null}
             pieces={pieces}
             openIndex={openIndex}
             onOpen={setOpenIndex}
-            onChangeType={() => setStep(2)}
           />
         ) : (
           <div className="mx-auto w-full max-w-lg px-6 pt-12 pb-10">
             {step === 1 && <IntroStep />}
             {step === 2 && <TypeStep type={type} onPick={pickType} />}
-            {step === 3 && (
-              <ShapeStep
-                type={type}
-                shapeQ={shapeQ}
-                shape={shape}
-                onShape={setShape}
-                description={description}
-                onDescription={setDescription}
-              />
-            )}
+            {step === 3 &&
+              (isOther ? (
+                <OtherStepView step={subStep as OtherStep} answers={other} onChange={patchOther} />
+              ) : subStep === "grantDecision" ? (
+                <GrantDecisionStep value={grantDecision} onPick={setGrantDecision} />
+              ) : (
+                <ShapeStep shapeQ={shapeQ} shape={shape} onShape={setShape} />
+              ))}
             {step === 5 && (
               <IntakeStep
                 name={name}
@@ -163,7 +205,7 @@ export function WizardV3({
         <div className="h-1 w-full bg-[var(--color-border)]">
           <div
             className="h-full bg-[var(--color-primary)] transition-all duration-300"
-            style={{ width: `${(step / TOTAL) * 100}%` }}
+            style={{ width: `${progress}%` }}
           />
         </div>
         <div className="flex w-full items-center justify-between gap-2 px-6 py-4">
@@ -266,41 +308,18 @@ function TypeStep({
 }
 
 // ---------------------------------------------------------------------------
-// Step 3 — Shape (or describe, for "other")
+// Step 3 — Shape. ("Other" answers its own sequence — see OtherQuestions.)
 // ---------------------------------------------------------------------------
 
 function ShapeStep({
-  type,
   shapeQ,
   shape,
   onShape,
-  description,
-  onDescription,
 }: {
-  type: ProcessType | null;
   shapeQ: (typeof SHAPE_QUESTION)[ProcessType] | undefined;
   shape: ShapeKey | null;
   onShape: (s: ShapeKey) => void;
-  description: string;
-  onDescription: (v: string) => void;
 }) {
-  if (type === "other") {
-    return (
-      <div>
-        <StepHeading
-          title="Describe your process"
-          sub="In a sentence or two — what are people deciding, and how?"
-        />
-        <Textarea
-          autoFocus
-          value={description}
-          onChange={(e) => onDescription(e.target.value)}
-          placeholder="e.g. Neighbors propose small projects, a committee reviews them, and we fund what fits the budget."
-          className="mt-6 min-h-[120px]"
-        />
-      </div>
-    );
-  }
   return (
     <div>
       <StepHeading title={shapeQ?.heading ?? "How does it work?"} />
@@ -319,44 +338,51 @@ function ShapeStep({
   );
 }
 
+/** Grantmaking only — who makes the funding call. */
+function GrantDecisionStep({
+  value,
+  onPick,
+}: {
+  value: GrantDecision | null;
+  onPick: (d: GrantDecision) => void;
+}) {
+  return (
+    <div>
+      <StepHeading title={GRANT_DECISION_QUESTION.heading} />
+      <div className="mt-6 space-y-2.5">
+        {GRANT_DECISION_QUESTION.options.map((o) => (
+          <ChoiceCard
+            key={o.key}
+            selected={value === o.key}
+            onClick={() => onPick(o.key)}
+            title={o.label}
+            desc={o.desc}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Step 4 — Walkthrough (with the "other" fit assessment on top)
+// Step 4 — Walkthrough (with a plain-language recap for the "other" pathway)
 // ---------------------------------------------------------------------------
 
 function Step4({
   type,
-  assessment,
+  recap,
   pieces,
   openIndex,
   onOpen,
-  onChangeType,
 }: {
   type: ProcessType | null;
-  assessment: Assessment | null;
+  /** Set for "other": what we understood, in their words not ours. */
+  recap: string | null;
   pieces: Piece[];
   openIndex: number;
   onOpen: (i: number) => void;
-  onChangeType: () => void;
 }) {
-  // "Other" that isn't a fit — no walkthrough, just the verdict and an out.
-  if (type === "other" && assessment?.fit === "no") {
-    return (
-      <div className="mx-auto w-full max-w-lg px-6 pt-12 pb-10">
-        <FitBanner assessment={assessment} />
-        <div className="mt-8 text-center">
-          <p className="mx-auto max-w-md text-[14px] leading-relaxed text-[var(--color-muted-foreground)]">
-            If we've got that wrong, edit your description with Back — or pick one of Common's
-            process types.
-          </p>
-          <Button variant="outline" size="compact" onClick={onChangeType} className="mt-4">
-            Pick a process type
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const walk = (
+  return (
     <Walkthrough
       name=""
       type={(type ?? "pb") as ProcessType}
@@ -365,63 +391,27 @@ function Step4({
       openIndex={openIndex}
       settling={false}
       hideAdvance
+      /* The recap sits under the title, right above what it describes. */
+      banner={
+        recap ? (
+          <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] p-4">
+            <CheckCircle2
+              className="mt-0.5 size-5 shrink-0 text-[var(--color-primary)]"
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold leading-tight">Here's what we understood</p>
+              <p className="mt-1 text-[13px] leading-snug text-[var(--color-muted-foreground)]">
+                {recap} Change any of it with Back.
+              </p>
+            </div>
+          </div>
+        ) : undefined
+      }
       onOpen={onOpen}
       onAdvance={() => {}}
       onConfigure={() => {}}
     />
-  );
-
-  // "Other" that's a fit — a verdict banner above the walkthrough.
-  if (type === "other" && assessment) {
-    return (
-      <div className="pt-6">
-        <div className="mx-auto w-full max-w-[600px] px-6">
-          <FitBanner assessment={assessment} />
-        </div>
-        {walk}
-      </div>
-    );
-  }
-
-  return walk;
-}
-
-const FIT_TONE = {
-  good: {
-    box: "border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)]",
-    fg: "text-[var(--color-primary)]",
-    Icon: CheckCircle2,
-  },
-  stretch: {
-    box: "border-[var(--color-pending)]/30 bg-[var(--color-pending-soft)]",
-    fg: "text-[var(--color-pending)]",
-    Icon: Sparkles,
-  },
-  no: {
-    box: "border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)]",
-    fg: "text-[var(--color-danger)]",
-    Icon: CircleSlash,
-  },
-} as const;
-
-function FitBanner({ assessment }: { assessment: Assessment }) {
-  const t = FIT_TONE[assessment.fit];
-  return (
-    <div className={cn("flex items-start gap-3 rounded-[var(--radius-lg)] border p-4", t.box)}>
-      <t.Icon className={cn("mt-0.5 size-5 shrink-0", t.fg)} aria-hidden />
-      <div className="min-w-0">
-        <p className="text-[15px] font-semibold leading-tight">{assessment.headline}</p>
-        <p className="mt-1 text-[13px] leading-snug text-[var(--color-muted-foreground)]">
-          {assessment.body}
-        </p>
-        {assessment.roadmapNote && (
-          <p className="mt-2 flex items-start gap-1.5 text-[12px] font-medium text-[var(--color-pending)]">
-            <Map className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>{assessment.roadmapNote}</span>
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -490,65 +480,5 @@ function IntakeStep({
         </div>
       </div>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Shared bits
-// ---------------------------------------------------------------------------
-
-function StepHeading({ title, sub }: { title: string; sub?: string }) {
-  return (
-    <div className="text-center">
-      <h1 className="font-serif text-[24px] font-semibold leading-tight tracking-tight text-balance">
-        {title}
-      </h1>
-      {sub && (
-        <p className="mx-auto mt-1.5 max-w-md text-[14px] text-[var(--color-muted-foreground)]">
-          {sub}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function ChoiceCard({
-  selected,
-  onClick,
-  title,
-  desc,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={selected}
-      style={selected ? { borderColor: "var(--color-primary)" } : undefined}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-[var(--radius)] border-2 bg-[var(--color-surface)] p-3.5 text-left transition-colors",
-        selected
-          ? "bg-[var(--color-primary-soft)]"
-          : "border-[var(--color-border)] hover:border-[var(--color-primary)]",
-      )}
-    >
-      <span
-        className={cn(
-          "grid size-5 shrink-0 place-items-center rounded-full border-2",
-          selected ? "border-[var(--color-primary)]" : "border-[var(--color-input)]",
-        )}
-      >
-        {selected && <span className="size-2.5 rounded-full bg-[var(--color-primary)]" />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-medium leading-tight">{title}</span>
-        <span className="mt-0.5 block text-[13px] leading-snug text-[var(--color-muted-foreground)]">
-          {desc}
-        </span>
-      </span>
-    </button>
   );
 }
