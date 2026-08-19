@@ -127,10 +127,11 @@ so it never feels like a different mechanism.
    cards: one expanded at a time, each with a plain-language description and a
    **"YOU CAN"** list underneath. This is the teaching moment the whole wizard
    exists for — someone learning what Common does with their process.
-   - The phase names, descriptions and capability lists all live in `pieces.ts`
-     and `otherFlow.ts`. Treat them as **content, not chrome**.
-   - The capability lists are promises about what the product can do. Check them
-     against what's actually shipped before this goes in front of anyone.
+   - Some cards also carry a **norm** line — "Most PB lets people spread a budget
+     across projects." A nudge toward what's usual, shown under the capability
+     list. Optional per phase.
+   - See *Where the copy lives* — all of this is content, and some of it is a
+     claim about the product.
 5. **Name and access.** Process name, who can submit (open to the public /
    invite only), and a *Make submissions private* toggle for admin-and-reviewer
    only visibility.
@@ -139,6 +140,30 @@ so it never feels like a different mechanism.
      the first Submissions phase's "show submissions to everyone" option.
    - Choosing an always-open process in the "other" pathway pre-selects invite
      only here, because that setup is for a named group.
+
+## Where the copy lives
+
+Almost none of the user-facing text is hardcoded in the screens. It sits in four
+places, and it should all be read as **content up for review**, not chrome:
+
+| What | Where |
+| --- | --- |
+| Phase names, one-line descriptions, "YOU CAN" lists, norm nudges | `pieces.ts` |
+| The "other" pathway's questions, options, notices, recap sentences | `otherFlow.ts` |
+| Phase page hero lines, option toggle titles and helper text, what invitees are called, per-phase date labels | `phaseModel.ts` |
+| Everything else — headings, empty states, dialogs | inline in the components |
+
+Two of those carry more weight than the rest:
+
+- The **"YOU CAN" capability lists** in the walkthrough are promises about what
+  Common can do, made before anyone has set anything up.
+- The **Options toggles** on phase pages are the same kind of claim, stated as
+  features that exist — "Assign a staff helper", "Let reviewers request
+  revisions", "Show a running tally", "Blind review".
+
+I wrote both against what the product plausibly does, not against a spec. Check
+them against what's actually built before this reaches a real admin, and cut or
+reword anything that isn't real.
 
 ## The process page is the live process page, in edit mode
 
