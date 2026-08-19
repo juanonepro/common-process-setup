@@ -15,6 +15,7 @@ which are scaffolding, and what isn't real.
 | Stage machine for the whole flow | `src/components/v3/CreateFlowV3.tsx` |
 | Entry screen — **throwaway, see below** | `src/components/v3/EmptyStateV3.tsx` |
 | Intro wizard (5 steps, incl. the branching pathways) | `src/components/v3/WizardV3.tsx` |
+| The mapping walkthrough (step 4) | `src/components/v3/Walkthrough.tsx`, `PhaseRow.tsx` |
 | The "other process" question sequence + phase mapping | `src/components/v3/OtherQuestions.tsx`, `otherFlow.ts` |
 | Fixed phase mappings per process type | `src/components/v3/pieces.ts` |
 | Phase state model, defaults, toggles | `src/components/v3/phaseModel.ts` |
@@ -103,6 +104,42 @@ a half-guessed shortcut would be worse than the full run. Build it as it is, and
 treat "what a returning admin sees instead" as known, designed later — don't
 invent a skip link or a condition for it in this pass.
 
+## The wizard, screen by screen
+
+Five steps, each with Back, a progress line along the bottom, and one primary
+action. Step 3 branches by process type and is a small sequence of its own — the
+progress line advances through those sub-steps and Back walks out through them,
+so it never feels like a different mechanism.
+
+1. **Intro.** One screen setting up what's about to happen. Skippable content, not
+   a form.
+2. **What kind of process.** Three options: participatory grantmaking,
+   participatory budgeting, other. `TYPE_META` in `pieces.ts` also contains an
+   `election` type flagged `wired: false` — it is deliberately **not offered**.
+   Don't surface it because you found it in the data.
+3. **The branch.**
+   - Grantmaking → how applications arrive (one full application, or a letter of
+     intent first), then **who decides** what gets funded.
+   - Participatory budgeting → what people submit first (rough ideas, or complete
+     proposals).
+   - Other → the four-question sequence described under *Deliberate rules*.
+4. **The mapping walkthrough.** Every phase the answers produced, as a stack of
+   cards: one expanded at a time, each with a plain-language description and a
+   **"YOU CAN"** list underneath. This is the teaching moment the whole wizard
+   exists for — someone learning what Common does with their process.
+   - The phase names, descriptions and capability lists all live in `pieces.ts`
+     and `otherFlow.ts`. Treat them as **content, not chrome**.
+   - The capability lists are promises about what the product can do. Check them
+     against what's actually shipped before this goes in front of anyone.
+5. **Name and access.** Process name, who can submit (open to the public /
+   invite only), and a *Make submissions private* toggle for admin-and-reviewer
+   only visibility.
+   - These aren't cosmetic: the audience answer seeds **every** phase (subject to
+     the defaults rule — Review stays invite-only), and the privacy toggle sets
+     the first Submissions phase's "show submissions to everyone" option.
+   - Choosing an always-open process in the "other" pathway pre-selects invite
+     only here, because that setup is for a named group.
+
 ## The process page is the live process page, in edit mode
 
 `ProcessPage.tsx` is not a new screen. It's the **existing process page overview
@@ -161,9 +198,10 @@ is edited in place on the thing itself — there is no settings screen (see belo
 
 **Top bar, in draft**
 - Exit · `Draft` badge · Add admin · Preview · Publish (gated as above).
-- Add admin is its own small modal, not a detour into a settings screen, because
-  it's the thing someone does mid-setup when they realise they shouldn't be doing
-  this alone.
+- Add admin is its own small modal (`AdminModal.tsx`), not a detour into a
+  settings screen, because it's the thing someone does mid-setup when they
+  realise they shouldn't be doing this alone. Email in, list below, hover-remove
+  on everyone but you.
 
 **There is no process-settings screen.** An earlier version had one (rename,
 visibility, admins, export, duplicate, delete) and it was removed on purpose —
@@ -256,7 +294,8 @@ Prototype-only data that should come from the product instead:
 ## Scaffolding — replace, don't preserve
 
 - `src/components/ui/*` — thin local primitives. `card.tsx` and `sheet.tsx`
-  aren't even used.
+  aren't even used. `Icon.tsx` resolves lucide icons by name at runtime, which
+  ships the whole icon set — use your own icon component.
 - `src/index.css` `@theme` block — prototype tokens, and ~160 hardcoded
   `text-[15px]`-style sizes across the screens because there's no named type
   scale. Use your ramp.
@@ -267,7 +306,11 @@ Prototype-only data that should come from the product instead:
   no keyboard alternative.
 - Duplicated inline patterns that should each be one component: click-away
   popovers (3 copies), `IconButton` (2), dashed "add" rows (5), pills and chips
-  (6).
+  (6). `WizardBits.tsx` and `PhaseSettings.tsx` are the prototype's own local
+  primitives — same treatment.
+- Motion is incidental, not designed: the process page fades in on arrival and
+  process ↔ phase navigation uses a View Transition crossfade. Use whatever your
+  product does; nothing depends on it.
 - `CreateModalV3.tsx` and `TransitionV3.tsx` are unreachable — leftovers from an
   earlier version. Ignore them.
 
