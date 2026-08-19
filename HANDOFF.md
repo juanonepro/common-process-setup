@@ -19,7 +19,10 @@ which are scaffolding, and what isn't real.
 | Fixed phase mappings per process type | `src/components/v3/pieces.ts` |
 | Phase state model, defaults, toggles | `src/components/v3/phaseModel.ts` |
 | Process page (the editable public page) | `src/components/v3/ProcessPage.tsx` |
+| Page content sections, pinned resources | `src/components/v3/PageSections.tsx` |
+| Phase structure — add / delete / reorder | `src/components/v3/EditProcessModal.tsx` |
 | Per-phase setup page | `src/components/v3/PhaseSetup.tsx` |
+| Phase bodies — form, rubric, voting, invitees | `PhaseBuilders.tsx`, `PhaseVoting.tsx`, `PhaseInvitees.tsx` |
 | Who owns phase state and structural edits | `src/components/v3/Workspace.tsx` |
 
 All state is local React state. There is no store, no persistence, no backend —
@@ -124,6 +127,49 @@ affordances, not the layout:
 Treat any reflow between draft and published as a bug. If an edit control can't
 sit in the same footprint as its read-only counterpart, reserve the space rather
 than letting the page jump.
+
+## What the process page actually sets up
+
+Two zones, and the division between them is the point: the rail is **the
+process**, the middle column is **the page participants will read**. Everything
+is edited in place on the thing itself — there is no settings screen (see below).
+
+**Left rail — the process**
+- Every phase as a row: name, type, date window, and whether it's set up. Each
+  row is the way into that phase's own setup page.
+- `Edit process` opens the structure — add, delete, reorder phases. Structure
+  lives there; the detail lives on the phase pages. Keeping those apart is
+  deliberate, so the modal stays a skeleton view of the whole thing.
+- Below that, **Pinned Resources** — guides, documents and links, added as title
+  + URL, with an empty state until there's one.
+
+**Middle column — the participant-facing page**
+- Composed from sections: **About** by default, then **Events**, **FAQs** and
+  free **Text** sections added through "Add a section".
+- Section titles are fixed except for free text sections. Sections are removable
+  on hover. Events and FAQs hold repeatable items.
+- Helper text under a section heading only shows while that section is empty —
+  it explains, then gets out of the way.
+- An earlier version auto-listed the phases here as a "Phases" section. It was
+  cut for being noisy: the rail already carries them. Don't reintroduce it.
+
+**Banner**
+- The process name is edited where it's read, inline in the banner — not in a
+  settings form. Long names wrap at display size rather than scrolling.
+- Under it, **Stewarded by** — who's accountable for the process — same
+  principle: on the page, not buried.
+
+**Top bar, in draft**
+- Exit · `Draft` badge · Add admin · Preview · Publish (gated as above).
+- Add admin is its own small modal, not a detour into a settings screen, because
+  it's the thing someone does mid-setup when they realise they shouldn't be doing
+  this alone.
+
+**There is no process-settings screen.** An earlier version had one (rename,
+visibility, admins, export, duplicate, delete) and it was removed on purpose —
+everything worth editing is on the page. The consequence is real and unresolved:
+nothing in the prototype can delete a whole process or set its visibility. Those
+need to come from the product's own patterns, not be reinvented here.
 
 ## Stubs — don't rebuild these as they are
 
