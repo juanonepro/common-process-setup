@@ -8,6 +8,15 @@ Tailwind, the tokens, or the primitives in `src/components/ui/`.
 What follows is the part the code can't tell you: which choices are deliberate,
 which are scaffolding, and what isn't real.
 
+> **Read this first.** The process page is **not a new screen and not a
+> redesign**. It is the process page that already exists in the product, with
+> editing turned on. Take the layout from the real page — the prototype's version
+> was reconstructed from a screenshot and is only an approximation. Publishing
+> flips the same page to participant-facing and read-only, so **draft and
+> published must not differ in layout**; only the edit affordances change. Any
+> reflow between the two is a bug. Details in
+> *[The process page is the live process page, in edit mode](#the-process-page-is-the-live-process-page-in-edit-mode)*.
+
 ## Where to start reading
 
 | Concern | File |
@@ -19,7 +28,7 @@ which are scaffolding, and what isn't real.
 | The "other process" question sequence + phase mapping | `src/components/v3/OtherQuestions.tsx`, `otherFlow.ts` |
 | Fixed phase mappings per process type | `src/components/v3/pieces.ts` |
 | Phase state model, defaults, toggles | `src/components/v3/phaseModel.ts` |
-| Process page (the editable public page) | `src/components/v3/ProcessPage.tsx` |
+| Process page — **your existing overview layout, in edit mode** | `src/components/v3/ProcessPage.tsx` |
 | Page content sections, pinned resources | `src/components/v3/PageSections.tsx` |
 | Phase structure — add / delete / reorder | `src/components/v3/EditProcessModal.tsx` |
 | Per-phase setup page | `src/components/v3/PhaseSetup.tsx` |
@@ -167,11 +176,14 @@ reword anything that isn't real.
 
 ## The process page is the live process page, in edit mode
 
-`ProcessPage.tsx` is not a new screen. It's the **existing process page overview
-layout** with editing turned on — the prototype only approximates it, because it
-was built from a screenshot. Your current overview page is the source of truth
-for the layout: same banner, same left rail, same content column, same grid,
-spacing and type. Take it from the real page, not from mine.
+Saying it again because it's the single easiest thing to get wrong:
+`ProcessPage.tsx` is **not a new screen and not a redesign of the process page**.
+It's the **existing process page overview layout** with editing turned on — the
+prototype only approximates it, because it was built from a screenshot. Your
+current overview page is the source of truth for the layout: same banner, same
+left rail, same content column, same grid, spacing and type. Take it from the
+real page, not from mine. If something in the prototype's layout disagrees with
+the live page, the live page wins.
 
 The reason this matters: **publishing flips the same page into the
 participant-facing, read-only view, and nothing should move.** Same containers,
