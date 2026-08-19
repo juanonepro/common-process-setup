@@ -171,6 +171,72 @@ everything worth editing is on the page. The consequence is real and unresolved:
 nothing in the prototype can delete a whole process or set its visibility. Those
 need to come from the product's own patterns, not be reinvented here.
 
+## Phase setup pages
+
+Clicking a phase in the rail opens its own full page. Every phase type uses the
+**same shell** — only the left pane changes. Keeping that shell identical is
+deliberate: it's what makes five quite different setups read as one system.
+
+**The shell**
+- Top bar is the same height as the process page's, so moving between them
+  doesn't jump. Just `Back` — which is also what saves (see below).
+- Hero: the phase type in small caps, the phase name **inline-editable**, and one
+  line saying what this page is for.
+- Tabs sit under the hero, not in the top bar, and only exist when the phase is
+  invite-only: the phase type, and the people tab with its count badge.
+- Body is two panes: **left** is the thing this phase is for, **right** is the
+  settings that govern it.
+- `Delete this phase` at the very bottom, below a divider, away from the settings
+  it would undo. Hidden when it's the only phase left.
+
+**Left pane, per phase type**
+- **Submissions → "Submission form".** The question builder. Empty state offers
+  three routes: `Add a question` (primary), `Upload questions` (secondary — a
+  stub), and `Questions from a previous process` (tertiary → picker of saved
+  question sets).
+- **Review → "Scoring rubric".** Same builder shape, for criteria. Reviewers
+  answer with a Rating scale, Yes / No, or Text. Reuse from a previous process is
+  offered the same way.
+- **Develop → "Proposal form".** The submissions builder plus the locked
+  carry-over rule described under *Deliberate rules*.
+- **Voting → "How voting works".** An ordered list of ways to vote — **more than
+  one can run in the same phase** (spread a budget, then rank what's left).
+  Numbered and reorderable once there are two; "Spread a budget" carries a total,
+  "Pick a set number" carries a count.
+- **Results → "How results are shown".** Just the titles of what won, or the full
+  entries as submitted.
+
+**The field editor** — one component behind all three builders, wording adapted
+per context ("Question" vs "Criterion", "How should people answer this?" vs "How
+should reviewers score this?"):
+- Name, required, capped at 50 characters with a live counter.
+- Description is **optional and folded away** behind "Add description" — the
+  common case is a name and an answer type, two decisions rather than four.
+- Answer type as radio pills, a `Required?` toggle, and Delete.
+- Drag to reorder (mouse only in the prototype — see *Scaffolding*).
+
+**Right pane — always in this order: when it runs, options, access.** Access is
+last on purpose; dates are what every admin looks for first.
+- **When it runs** is labelled per phase (Submission window, Review period,
+  Development period, Voting window, When results are shared). Empty state is a
+  single `Add dates` button; once open, Opens / Closes plus a line naming the
+  previous phase and when it ends — the thing you're actually dating against.
+- **Options** are the per-phase toggles in `TOGGLES` (`phaseModel.ts`).
+- **Access** is one `Invite only` toggle. Switching it on reveals the people tab;
+  switching it off hides the tab but keeps the list, so it's not destructive.
+
+**The people tab** — named for the phase: Participants, Reviewers, Voters
+(Results uses Participants).
+- Filter chips with counts: All / Invited / Joined / and the phase's own finished
+  state — Submitted, Reviewed, Voted. Results has no finished state.
+- Rows: initials avatar, email, "Invited 4 minutes ago", a status badge, and a ⋮
+  menu with Resend invite / Remove.
+- Two ways in: invite by email (one per line or comma-separated), or
+  `Use the same people as another phase`, which copies them across as freshly
+  invited.
+- Only *Invited* can occur in a draft — Joined and Submitted need a live process.
+  The model and rendering support all three so they fill in later.
+
 ## Stubs — don't rebuild these as they are
 
 These open a "not wired up in this prototype" dialog. Wire them to something
@@ -216,4 +282,5 @@ Take it in slices rather than all at once:
    mode on top of it, rather than building the draft page and retrofitting the
    published one.
 3. **Phase setup pages** — one shell, five bodies (form, rubric, proposal form,
-   voting, results), plus the invitee tab.
+   voting, results), plus the people tab. Build the shell and the field editor
+   first; the five bodies are small once those exist.
